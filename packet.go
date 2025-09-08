@@ -35,6 +35,7 @@ var (
 
 type clientPacketConn struct {
 	*clientConn
+	readWaitOptions network.ReadWaitOptions
 }
 
 func (c *clientPacketConn) FrontHeadroom() int {
