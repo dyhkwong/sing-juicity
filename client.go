@@ -67,7 +67,7 @@ func NewClient(options ClientOptions) (*Client, error) {
 		ctx:        options.Context,
 		dialer:     options.Dialer,
 		serverAddr: options.ServerAddress,
-		tlsConfig:  options.TLSConfig,
+		tlsConfig:  options.TLSConfig, // clients need to set ALPN `h3` themselves
 		quicConfig: quicConfig,
 		uuid:       options.UUID,
 		password:   options.Password,

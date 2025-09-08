@@ -33,6 +33,7 @@ func setCongestion(ctx context.Context, connection quic.Connection, congestionNa
 	if timeFunc == nil {
 		timeFunc = time.Now
 	}
+	// Although the official Juicity server can be configured to use `cubic`, `new_reno` and `bbr`, it is in fact a useless placebo option and BBR is always used.
 	switch congestionName {
 	case "bbr":
 		fallthrough

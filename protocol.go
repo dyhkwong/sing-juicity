@@ -36,6 +36,7 @@ const (
 
 const AuthenticateLen = 2 + 16 + 32
 
+// Juicity Specification tells us it is 0x01 for IPv4, 0x02 for IPv6, and 0x03 for domain, which is incorrect.
 var AddressSerializer = metadata.NewSerializer(
 	metadata.AddressFamilyByte(0x01, metadata.AddressFamilyIPv4),
 	metadata.AddressFamilyByte(0x04, metadata.AddressFamilyIPv6),

@@ -46,6 +46,8 @@ func (c *clientPacketConn) FrontHeadroom() int {
 }
 
 func (c *clientPacketConn) ReadPacket(buffer *buf.Buffer) (destination metadata.Socksaddr, err error) {
+	// The official Juicity server implementation always responses with IPv4-mapped IPv6 address for IPv4, and AddressSerializer.ReadAddrPort has already converted it to the correct one so we don't need to convert it ourselves.
+	// This is not documented in Juicity Specification, and this is a bug of the official Juicity server implementation.
 	destination, err = AddressSerializer.ReadAddrPort(c.clientConn)
 	if err != nil {
 		return
@@ -78,6 +80,9 @@ func (c *clientPacketConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) 
 func (c *clientPacketConn) WritePacket(buffer *buf.Buffer, destination metadata.Socksaddr) (err error) {
 	defer buffer.Release()
 	bufferLen := buffer.Len()
+	// The description of UDP header in Juicity Specification is incorrect.
+	// The correct one is like: [handshake][address_of_payload0][length_of_payload0][payload0][address_of_payload1][length_of_payload1][payload1]...
+	// Where "handshake" is like: [0x03 (Network UDP)][address]. The "address" in handshake should be the same as "address_of_payload0" and it is useless for a bind socket.
 	header := buf.With(buffer.ExtendHeader(metadata.SocksaddrSerializer.AddrPortLen(destination) + 2))
 	err = metadata.SocksaddrSerializer.WriteAddrPort(header, destination)
 	if err != nil {
