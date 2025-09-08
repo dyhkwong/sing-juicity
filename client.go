@@ -211,6 +211,10 @@ func (c *clientQUICConnection) closeWithError(err error) {
 	})
 }
 
+var (
+	_ network.EarlyConn = (*clientConn)(nil)
+)
+
 type clientConn struct {
 	quic.Stream
 	parent         *clientQUICConnection
