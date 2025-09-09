@@ -20,7 +20,6 @@ package juicity
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
 	"errors"
 	"io"
 	"net"
@@ -35,6 +34,7 @@ import (
 	"github.com/sagernet/sing/common/auth"
 	"github.com/sagernet/sing/common/baderror"
 	"github.com/sagernet/sing/common/buf"
+	"github.com/sagernet/sing/common/bufio"
 	"github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/logger"
 	"github.com/sagernet/sing/common/metadata"
@@ -259,15 +259,19 @@ func (s *serverSession[U]) loopStreams() {
 }
 
 func (s *serverSession[U]) handleStream(stream quic.Stream) error {
-	var network byte
-	err := binary.Read(stream, binary.BigEndian, &network)
+	// Most of the vulnerabilities described in https://github.com/tuic-protocol/tuic/issues/67#issuecomment-1196862427 are still valid.
+	// Unable to fix because they are design flaw.
+	buffer := buf.NewSize(1 + metadata.MaxSocksaddrLength)
+	defer buffer.Release()
+	_, err := buffer.ReadAtLeastFrom(stream, 1)
 	if err != nil {
 		return exceptions.Cause(err, "read request")
 	}
+	network, _ := buffer.ReadByte()
 	if network != NetworkTCP && network != NetworkUDP {
 		return exceptions.New("unsupported stream network")
 	}
-	destination, err := AddressSerializer.ReadAddrPort(stream)
+	destination, err := AddressSerializer.ReadAddrPort(io.MultiReader(buffer, stream))
 	if err != nil {
 		return exceptions.Cause(err, "read request destination")
 	}
@@ -279,6 +283,9 @@ func (s *serverSession[U]) handleStream(stream quic.Stream) error {
 	var conn net.Conn = &serverConn{
 		Stream:      stream,
 		destination: destination,
+	}
+	if !buffer.IsEmpty() {
+		conn = bufio.NewCachedConn(conn, buffer.ToOwned())
 	}
 	switch network {
 	case NetworkTCP:
