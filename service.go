@@ -71,7 +71,8 @@ type Service[U comparable] struct {
 
 func NewService[U comparable](options ServiceOptions) (*Service[U], error) {
 	if options.AuthTimeout == 0 {
-		options.AuthTimeout = 3 * time.Second
+		// Official Juicity server uses 10 seconds
+		options.AuthTimeout = 10 * time.Second
 	}
 	quicConfig := &quic.Config{
 		DisablePathMTUDiscovery: !(runtime.GOOS == "windows" || runtime.GOOS == "linux" || runtime.GOOS == "android" || runtime.GOOS == "darwin"),
