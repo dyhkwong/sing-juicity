@@ -3,6 +3,7 @@ module github.com/dyhkwong/sing-juicity
 go 1.23.0
 
 require (
+	github.com/gofrs/uuid/v5 v5.3.2
 	github.com/sagernet/quic-go v0.52.0-beta.1
 	github.com/sagernet/sing v0.6.7
 	github.com/sagernet/sing-quic v0.5.0

@@ -28,40 +28,47 @@ import (
 )
 
 var (
-	_ network.NetPacketConn = (*clientPacketConn)(nil)
-	_ network.EarlyConn     = (*clientPacketConn)(nil)
-	_ network.FrontHeadroom = (*clientPacketConn)(nil)
+	_ network.NetPacketConn = (*udpPacketConn)(nil)
+	_ network.EarlyConn     = (*udpPacketConn)(nil)
+	_ network.FrontHeadroom = (*udpPacketConn)(nil)
 )
 
-type clientPacketConn struct {
-	*clientConn
+type udpPacketConn struct {
+	net.Conn
 	readWaitOptions network.ReadWaitOptions
 }
 
-func (c *clientPacketConn) FrontHeadroom() int {
-	if c.clientConn.requestWritten {
-		return metadata.MaxSocksaddrLength + 2
+func (c *udpPacketConn) FrontHeadroom() int {
+	if clientConn, ok := c.Conn.(*clientConn); ok && !clientConn.requestWritten {
+		return 1 + metadata.MaxSocksaddrLength + metadata.MaxSocksaddrLength + 2
 	}
-	return 1 + metadata.MaxSocksaddrLength + metadata.MaxSocksaddrLength + 2
+	return metadata.MaxSocksaddrLength + 2
 }
 
-func (c *clientPacketConn) ReadPacket(buffer *buf.Buffer) (destination metadata.Socksaddr, err error) {
+func (c *udpPacketConn) NeedHandshake() bool {
+	if clientConn, ok := c.Conn.(*clientConn); ok && !clientConn.requestWritten {
+		return true
+	}
+	return false
+}
+
+func (c *udpPacketConn) ReadPacket(buffer *buf.Buffer) (destination metadata.Socksaddr, err error) {
 	// The official Juicity server implementation always responses with IPv4-mapped IPv6 address for IPv4, and AddressSerializer.ReadAddrPort has already converted it to the correct one so we don't need to convert it ourselves.
 	// This is not documented in Juicity Specification, and this is a bug of the official Juicity server implementation.
-	destination, err = AddressSerializer.ReadAddrPort(c.clientConn)
+	destination, err = AddressSerializer.ReadAddrPort(c.Conn)
 	if err != nil {
 		return
 	}
 	var length uint16
-	err = binary.Read(c.clientConn, binary.BigEndian, &length)
+	err = binary.Read(c.Conn, binary.BigEndian, &length)
 	if err != nil {
 		return
 	}
-	_, err = buffer.ReadFullFrom(c.clientConn, int(length))
+	_, err = buffer.ReadFullFrom(c.Conn, int(length))
 	return
 }
 
-func (c *clientPacketConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
+func (c *udpPacketConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
 	buffer := buf.With(p)
 	var destination metadata.Socksaddr
 	destination, err = c.ReadPacket(buffer)
@@ -77,7 +84,7 @@ func (c *clientPacketConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) 
 	return
 }
 
-func (c *clientPacketConn) WritePacket(buffer *buf.Buffer, destination metadata.Socksaddr) (err error) {
+func (c *udpPacketConn) WritePacket(buffer *buf.Buffer, destination metadata.Socksaddr) (err error) {
 	defer buffer.Release()
 	bufferLen := buffer.Len()
 	// The description of UDP header in Juicity Specification is incorrect.
@@ -92,14 +99,14 @@ func (c *clientPacketConn) WritePacket(buffer *buf.Buffer, destination metadata.
 	if err != nil {
 		return
 	}
-	_, err = c.clientConn.Write(buffer.Bytes())
+	_, err = c.Conn.Write(buffer.Bytes())
 	return
 }
 
-func (c *clientPacketConn) WriteTo(p []byte, addr net.Addr) (n int, err error) {
+func (c *udpPacketConn) WriteTo(p []byte, addr net.Addr) (n int, err error) {
 	return bufio.WritePacketBuffer(c, buf.As(p), metadata.SocksaddrFromNet(addr))
 }
 
-func (c *clientPacketConn) Upstream() any {
-	return c.clientConn
+func (c *udpPacketConn) Upstream() any {
+	return c.Conn
 }

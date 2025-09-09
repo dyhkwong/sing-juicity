@@ -25,25 +25,25 @@ import (
 	"github.com/sagernet/sing/common/network"
 )
 
-var _ network.PacketReadWaiter = (*clientPacketConn)(nil)
+var _ network.PacketReadWaiter = (*udpPacketConn)(nil)
 
-func (c *clientPacketConn) InitializeReadWaiter(options network.ReadWaitOptions) (needCopy bool) {
+func (c *udpPacketConn) InitializeReadWaiter(options network.ReadWaitOptions) (needCopy bool) {
 	c.readWaitOptions = options
 	return false
 }
 
-func (c *clientPacketConn) WaitReadPacket() (buffer *buf.Buffer, destination metadata.Socksaddr, err error) {
-	destination, err = metadata.SocksaddrSerializer.ReadAddrPort(c.clientConn)
+func (c *udpPacketConn) WaitReadPacket() (buffer *buf.Buffer, destination metadata.Socksaddr, err error) {
+	destination, err = metadata.SocksaddrSerializer.ReadAddrPort(c.Conn)
 	if err != nil {
 		return
 	}
 	var length uint16
-	err = binary.Read(c.clientConn, binary.BigEndian, &length)
+	err = binary.Read(c.Conn, binary.BigEndian, &length)
 	if err != nil {
 		return
 	}
 	buffer = c.readWaitOptions.NewPacketBuffer()
-	_, err = buffer.ReadFullFrom(c.clientConn, int(length))
+	_, err = buffer.ReadFullFrom(c.Conn, int(length))
 	if err != nil {
 		buffer.Release()
 		return

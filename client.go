@@ -33,14 +33,14 @@ import (
 	"github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/metadata"
 	"github.com/sagernet/sing/common/network"
-	aTLS "github.com/sagernet/sing/common/tls"
+	"github.com/sagernet/sing/common/tls"
 )
 
 type ClientOptions struct {
 	Context       context.Context
 	Dialer        network.Dialer
 	ServerAddress metadata.Socksaddr
-	TLSConfig     aTLS.Config
+	TLSConfig     tls.Config
 	UUID          [16]byte
 	Password      string
 }
@@ -49,7 +49,7 @@ type Client struct {
 	ctx        context.Context
 	dialer     network.Dialer
 	serverAddr metadata.Socksaddr
-	tlsConfig  aTLS.Config
+	tlsConfig  tls.Config
 	quicConfig *quic.Config
 	uuid       [16]byte
 	password   string
@@ -160,8 +160,8 @@ func (c *Client) ListenPacket(ctx context.Context, destination metadata.Socksadd
 	if err != nil {
 		return nil, err
 	}
-	return &clientPacketConn{
-		clientConn: &clientConn{
+	return &udpPacketConn{
+		Conn: &clientConn{
 			Stream:      stream,
 			parent:      conn,
 			destination: destination,
@@ -211,20 +211,12 @@ func (c *clientQUICConnection) closeWithError(err error) {
 	})
 }
 
-var (
-	_ network.EarlyConn = (*clientConn)(nil)
-)
-
 type clientConn struct {
 	quic.Stream
 	parent         *clientQUICConnection
 	destination    metadata.Socksaddr
 	requestWritten bool
 	network        int
-}
-
-func (c *clientConn) NeedHandshake() bool {
-	return !c.requestWritten
 }
 
 func (c *clientConn) Read(b []byte) (n int, err error) {
