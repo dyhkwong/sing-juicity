@@ -218,11 +218,11 @@ func (s *serverSession[U]) handleUniStream(stream quic.ReceiveStream) error {
 			return exceptions.New("authentication: unknown user ", uuid.UUID(userUUID))
 		}
 		handshakeState := s.quicConn.ConnectionState()
-		tuicToken, err := handshakeState.TLS.ExportKeyingMaterial(string(userUUID[:]), []byte(s.passwordMap[user]), 32)
+		token, err := handshakeState.TLS.ExportKeyingMaterial(string(userUUID[:]), []byte(s.passwordMap[user]), 32)
 		if err != nil {
 			return exceptions.Cause(err, "authentication: export keying material")
 		}
-		if !bytes.Equal(tuicToken, buffer.Range(2+16, 2+16+32)) {
+		if !bytes.Equal(token, buffer.Range(2+16, AuthenticateLen)) {
 			return exceptions.New("authentication: token mismatch")
 		}
 		s.authUser = user
