@@ -29,7 +29,7 @@ import (
 
 var (
 	_ network.NetPacketConn = (*udpPacketConn)(nil)
-	_ network.EarlyConn     = (*udpPacketConn)(nil)
+	_ network.EarlyWriter   = (*udpPacketConn)(nil)
 	_ network.FrontHeadroom = (*udpPacketConn)(nil)
 )
 
@@ -45,7 +45,7 @@ func (c *udpPacketConn) FrontHeadroom() int {
 	return metadata.MaxSocksaddrLength + 2
 }
 
-func (c *udpPacketConn) NeedHandshake() bool {
+func (c *udpPacketConn) NeedHandshakeForWrite() bool {
 	if clientConn, ok := c.Conn.(*clientConn); ok && !clientConn.requestWritten {
 		return true
 	}
