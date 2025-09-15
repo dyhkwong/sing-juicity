@@ -132,7 +132,7 @@ func (s *Service[U]) Close() error {
 	)
 }
 
-func (s *Service[U]) handleConnection(connection quic.Connection) {
+func (s *Service[U]) handleConnection(connection *quic.Conn) {
 	setCongestion(s.ctx, connection, "bbr")
 	session := &serverSession[U]{
 		Service:  s,
@@ -147,7 +147,7 @@ func (s *Service[U]) handleConnection(connection quic.Connection) {
 type serverSession[U comparable] struct {
 	*Service[U]
 	ctx        context.Context
-	quicConn   quic.Connection
+	quicConn   *quic.Conn
 	connAccess sync.Mutex
 	connDone   chan struct{}
 	connErr    error
@@ -185,7 +185,7 @@ func (s *serverSession[U]) loopUniStreams() {
 	}
 }
 
-func (s *serverSession[U]) handleUniStream(stream quic.ReceiveStream) error {
+func (s *serverSession[U]) handleUniStream(stream *quic.ReceiveStream) error {
 	defer stream.CancelRead(0)
 	buffer := buf.New()
 	defer buffer.Release()
@@ -259,7 +259,7 @@ func (s *serverSession[U]) loopStreams() {
 	}
 }
 
-func (s *serverSession[U]) handleStream(stream quic.Stream) error {
+func (s *serverSession[U]) handleStream(stream *quic.Stream) error {
 	// Most of the vulnerabilities described in https://github.com/tuic-protocol/tuic/issues/67#issuecomment-1196862427 are still valid.
 	// Unable to fix because they are design flaw.
 	buffer := buf.NewSize(1 + metadata.MaxSocksaddrLength)
@@ -316,7 +316,7 @@ func (s *serverSession[U]) closeWithError(err error) {
 }
 
 type serverConn struct {
-	quic.Stream
+	*quic.Stream
 	destination metadata.Socksaddr
 }
 
