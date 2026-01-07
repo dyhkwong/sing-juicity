@@ -23,6 +23,8 @@ import (
 
 	"github.com/sagernet/quic-go"
 	"github.com/sagernet/quic-go/congestion"
+	"github.com/sagernet/sing-quic/congestion_bbr1"
+	"github.com/sagernet/sing-quic/congestion_bbr2"
 	congestion_meta1 "github.com/sagernet/sing-quic/congestion_meta1"
 	congestion_meta2 "github.com/sagernet/sing-quic/congestion_meta2"
 	"github.com/sagernet/sing/common/ntp"
@@ -33,8 +35,44 @@ func setCongestion(ctx context.Context, connection *quic.Conn, congestionName st
 	if timeFunc == nil {
 		timeFunc = time.Now
 	}
-	// Although the official Juicity server can be configured to use `cubic`, `new_reno` and `bbr`, it is in fact a useless placebo option and BBR is always used.
 	switch congestionName {
+	case "cubic":
+		connection.SetCongestionControl(
+			congestion_meta1.NewCubicSender(
+				congestion_meta1.DefaultClock{TimeFunc: timeFunc},
+				congestion.ByteCount(connection.Config().InitialPacketSize),
+				false,
+			),
+		)
+	case "new_reno":
+		connection.SetCongestionControl(
+			congestion_meta1.NewCubicSender(
+				congestion_meta1.DefaultClock{TimeFunc: timeFunc},
+				congestion.ByteCount(connection.Config().InitialPacketSize),
+				true,
+			),
+		)
+	case "bbr_quiche":
+		connection.SetCongestionControl(congestion_bbr1.NewBbrSender(
+			congestion_bbr1.DefaultClock{TimeFunc: timeFunc},
+			congestion.ByteCount(connection.Config().InitialPacketSize),
+			congestion_bbr1.InitialCongestionWindowPackets,
+			congestion_bbr1.MaxCongestionWindowPackets,
+		))
+	case "bbr2":
+		connection.SetCongestionControl(congestion_bbr2.NewBBR2Sender(
+			congestion_bbr2.DefaultClock{TimeFunc: timeFunc},
+			congestion.ByteCount(connection.Config().InitialPacketSize),
+			0,
+			false,
+		))
+	case "bbr2_aggressive":
+		connection.SetCongestionControl(congestion_bbr2.NewBBR2Sender(
+			congestion_bbr2.DefaultClock{TimeFunc: timeFunc},
+			congestion.ByteCount(connection.Config().InitialPacketSize),
+			32*congestion.ByteCount(connection.Config().InitialPacketSize),
+			true,
+		))
 	case "bbr":
 		fallthrough
 	default:
