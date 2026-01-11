@@ -5,7 +5,7 @@ go 1.24.0
 require (
 	github.com/gofrs/uuid/v5 v5.4.0
 	github.com/sagernet/quic-go v0.57.1-sing-box-mod.3
-	github.com/sagernet/sing v0.8.0-beta.8
+	github.com/sagernet/sing v0.8.0-beta.10
 	github.com/sagernet/sing-quic v0.6.0-beta.8
 )
 
