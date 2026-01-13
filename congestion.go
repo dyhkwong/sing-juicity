@@ -52,6 +52,19 @@ func setCongestion(ctx context.Context, connection *quic.Conn, congestionName st
 				true,
 			),
 		)
+	case "bbr_meta_v1":
+		connection.SetCongestionControl(congestion_meta1.NewBBRSender(
+			congestion_meta1.DefaultClock{TimeFunc: timeFunc},
+			congestion.ByteCount(connection.Config().InitialPacketSize),
+			congestion_meta1.InitialCongestionWindow*congestion_meta1.InitialMaxDatagramSize,
+			congestion_meta1.DefaultBBRMaxCongestionWindow*congestion_meta1.InitialMaxDatagramSize,
+		))
+	case "bbr":
+		connection.SetCongestionControl(congestion_meta2.NewBbrSender(
+			congestion_meta2.DefaultClock{TimeFunc: timeFunc},
+			congestion.ByteCount(connection.Config().InitialPacketSize),
+			congestion.ByteCount(congestion_meta1.InitialCongestionWindow),
+		))
 	case "bbr_quiche":
 		connection.SetCongestionControl(congestion_bbr1.NewBbrSender(
 			congestion_bbr1.DefaultClock{TimeFunc: timeFunc},
@@ -72,14 +85,6 @@ func setCongestion(ctx context.Context, connection *quic.Conn, congestionName st
 			congestion.ByteCount(connection.Config().InitialPacketSize),
 			32*congestion.ByteCount(connection.Config().InitialPacketSize),
 			true,
-		))
-	case "bbr":
-		fallthrough
-	default:
-		connection.SetCongestionControl(congestion_meta2.NewBbrSender(
-			congestion_meta2.DefaultClock{TimeFunc: timeFunc},
-			congestion.ByteCount(connection.Config().InitialPacketSize),
-			congestion.ByteCount(congestion_meta1.InitialCongestionWindow),
 		))
 	}
 }

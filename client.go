@@ -36,22 +36,26 @@ import (
 )
 
 type ClientOptions struct {
-	Context       context.Context
-	Dialer        network.Dialer
-	ServerAddress metadata.Socksaddr
-	TLSConfig     tls.Config
-	UUID          [16]byte
-	Password      string
+	Context           context.Context
+	Dialer            network.Dialer
+	ServerAddress     metadata.Socksaddr
+	TLSConfig         tls.Config
+	UUID              [16]byte
+	Password          string
+	CongestionControl string
+
+	allowAllCongestionControl bool // do not export
 }
 
 type Client struct {
-	ctx        context.Context
-	dialer     network.Dialer
-	serverAddr metadata.Socksaddr
-	tlsConfig  tls.Config
-	quicConfig *quic.Config
-	uuid       [16]byte
-	password   string
+	ctx               context.Context
+	dialer            network.Dialer
+	serverAddr        metadata.Socksaddr
+	tlsConfig         tls.Config
+	quicConfig        *quic.Config
+	uuid              [16]byte
+	password          string
+	congestionControl string
 
 	connAccess sync.Mutex
 	conn       *clientQUICConnection
@@ -62,14 +66,24 @@ func NewClient(options ClientOptions) (*Client, error) {
 		DisablePathMTUDiscovery: !(runtime.GOOS == "windows" || runtime.GOOS == "linux" || runtime.GOOS == "android" || runtime.GOOS == "darwin"),
 		MaxIncomingUniStreams:   1 << 60,
 	}
+	switch options.CongestionControl {
+	case "":
+		options.CongestionControl = "bbr"
+	case "cubic", "new_reno", "bbr", "bbr2":
+	default:
+		if !options.allowAllCongestionControl {
+			return nil, exceptions.New("unknown congestion control algorithm: ", options.CongestionControl)
+		}
+	}
 	return &Client{
-		ctx:        options.Context,
-		dialer:     options.Dialer,
-		serverAddr: options.ServerAddress,
-		tlsConfig:  options.TLSConfig, // clients need to set ALPN `h3` themselves
-		quicConfig: quicConfig,
-		uuid:       options.UUID,
-		password:   options.Password,
+		ctx:               options.Context,
+		dialer:            options.Dialer,
+		serverAddr:        options.ServerAddress,
+		tlsConfig:         options.TLSConfig, // clients need to set ALPN `h3` themselves
+		quicConfig:        quicConfig,
+		uuid:              options.UUID,
+		password:          options.Password,
+		congestionControl: options.CongestionControl,
 	}, nil
 }
 
@@ -98,7 +112,7 @@ func (c *Client) offerNew(_ context.Context) (*clientQUICConnection, error) {
 		udpConn.Close()
 		return nil, exceptions.Cause(err, "open connection")
 	}
-	setCongestion(c.ctx, quicConn, "bbr")
+	setCongestion(c.ctx, quicConn, c.congestionControl)
 	conn := &clientQUICConnection{
 		quicConn: quicConn,
 		rawConn:  udpConn,

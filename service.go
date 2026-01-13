@@ -42,12 +42,15 @@ import (
 )
 
 type ServiceOptions struct {
-	Context     context.Context
-	Logger      logger.Logger
-	TLSConfig   tls.ServerConfig
-	AuthTimeout time.Duration
+	Context           context.Context
+	Logger            logger.Logger
+	TLSConfig         tls.ServerConfig
+	CongestionControl string
+	AuthTimeout       time.Duration
 	// UDPTimeout  time.Duration todo?
 	Handler ServiceHandler
+
+	allowAllCongestionControl bool // do not export
 }
 
 type ServiceHandler interface {
@@ -56,14 +59,15 @@ type ServiceHandler interface {
 }
 
 type Service[U comparable] struct {
-	ctx         context.Context
-	logger      logger.Logger
-	tlsConfig   tls.ServerConfig
-	quicConfig  *quic.Config
-	userMap     map[[16]byte]U
-	passwordMap map[U]string
-	authTimeout time.Duration
-	handler     ServiceHandler
+	ctx               context.Context
+	logger            logger.Logger
+	tlsConfig         tls.ServerConfig
+	quicConfig        *quic.Config
+	userMap           map[[16]byte]U
+	passwordMap       map[U]string
+	congestionControl string
+	authTimeout       time.Duration
+	handler           ServiceHandler
 
 	quicListener io.Closer
 }
@@ -80,14 +84,24 @@ func NewService[U comparable](options ServiceOptions) (*Service[U], error) {
 		MaxIncomingUniStreams:   1 << 60,
 		DisablePathManager:      true,
 	}
+	switch options.CongestionControl {
+	case "":
+		options.CongestionControl = "bbr"
+	case "cubic", "new_reno", "bbr", "bbr2":
+	default:
+		if !options.allowAllCongestionControl {
+			return nil, exceptions.New("unknown congestion control algorithm: ", options.CongestionControl)
+		}
+	}
 	return &Service[U]{
-		ctx:         options.Context,
-		logger:      options.Logger,
-		tlsConfig:   options.TLSConfig, // servers need to set ALPN `h3` themselves
-		quicConfig:  quicConfig,
-		userMap:     make(map[[16]byte]U),
-		authTimeout: options.AuthTimeout,
-		handler:     options.Handler,
+		ctx:               options.Context,
+		logger:            options.Logger,
+		tlsConfig:         options.TLSConfig, // servers need to set ALPN `h3` themselves
+		quicConfig:        quicConfig,
+		userMap:           make(map[[16]byte]U),
+		congestionControl: options.CongestionControl,
+		authTimeout:       options.AuthTimeout,
+		handler:           options.Handler,
 	}, nil
 }
 
@@ -132,7 +146,7 @@ func (s *Service[U]) Close() error {
 }
 
 func (s *Service[U]) handleConnection(connection *quic.Conn) {
-	setCongestion(s.ctx, connection, "bbr")
+	setCongestion(s.ctx, connection, s.congestionControl)
 	session := &serverSession[U]{
 		Service:  s,
 		ctx:      s.ctx,
