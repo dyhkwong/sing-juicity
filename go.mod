@@ -2,6 +2,11 @@ module github.com/dyhkwong/sing-juicity
 
 go 1.23.0
 
+retract (
+	v0.1.0-beta.5
+	v0.1.0-beta.4
+)
+
 require (
 	github.com/gofrs/uuid/v5 v5.3.2
 	github.com/sagernet/quic-go v0.52.0-beta.1
