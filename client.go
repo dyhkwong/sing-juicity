@@ -232,31 +232,31 @@ type clientConn struct {
 	network        int
 }
 
-func (c *clientConn) Read(b []byte) (n int, err error) {
-	n, err = c.Stream.Read(b)
-	return n, qtls.WrapError(err)
+func (c *clientConn) Read(b []byte) (int, error) {
+	n, err := c.Stream.Read(b)
+	return n, wrapQUICError(err)
 }
 
-func (c *clientConn) Write(b []byte) (n int, err error) {
+func (c *clientConn) Write(b []byte) (int, error) {
 	if !c.requestWritten {
 		request := buf.NewSize(1 + AddressSerializer.AddrPortLen(c.destination) + len(b))
 		defer request.Release()
 		request.WriteByte(byte(c.network))
-		err = AddressSerializer.WriteAddrPort(request, c.destination)
+		err := AddressSerializer.WriteAddrPort(request, c.destination)
 		if err != nil {
-			return
+			return 0, wrapQUICError(err)
 		}
 		request.Write(b)
 		_, err = c.Stream.Write(request.Bytes())
 		if err != nil {
 			c.parent.closeWithError(exceptions.Cause(err, "create new connection"))
-			return 0, qtls.WrapError(err)
+			return 0, wrapQUICError(err)
 		}
 		c.requestWritten = true
 		return len(b), nil
 	}
-	n, err = c.Stream.Write(b)
-	return n, qtls.WrapError(err)
+	n, err := c.Stream.Write(b)
+	return n, wrapQUICError(err)
 }
 
 func (c *clientConn) Close() error {

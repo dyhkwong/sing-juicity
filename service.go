@@ -333,14 +333,14 @@ type serverConn struct {
 	destination metadata.Socksaddr
 }
 
-func (c *serverConn) Read(p []byte) (n int, err error) {
-	n, err = c.Stream.Read(p)
-	return n, qtls.WrapError(err)
+func (c *serverConn) Read(p []byte) (int, error) {
+	n, err := c.Stream.Read(p)
+	return n, wrapQUICError(err)
 }
 
-func (c *serverConn) Write(p []byte) (n int, err error) {
-	n, err = c.Stream.Write(p)
-	return n, qtls.WrapError(err)
+func (c *serverConn) Write(p []byte) (int, error) {
+	n, err := c.Stream.Write(p)
+	return n, wrapQUICError(err)
 }
 
 func (c *serverConn) LocalAddr() net.Addr {

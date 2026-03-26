@@ -18,6 +18,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 package juicity
 
 import (
+	"io"
+
+	qtls "github.com/sagernet/sing-quic"
 	"github.com/sagernet/sing/common/metadata"
 )
 
@@ -42,3 +45,10 @@ var AddressSerializer = metadata.NewSerializer(
 	metadata.AddressFamilyByte(0x04, metadata.AddressFamilyIPv6),
 	metadata.AddressFamilyByte(0x03, metadata.AddressFamilyFqdn),
 )
+
+func wrapQUICError(err error) error {
+	if err == io.EOF {
+		return io.EOF
+	}
+	return qtls.WrapError(err)
+}
