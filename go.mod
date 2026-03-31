@@ -11,7 +11,7 @@ require (
 	github.com/gofrs/uuid/v5 v5.4.0
 	github.com/sagernet/quic-go v0.59.0-sing-box-mod.4
 	github.com/sagernet/sing v0.8.1
-	github.com/sagernet/sing-quic v0.6.0
+	github.com/sagernet/sing-quic v0.6.1
 )
 
 require (
