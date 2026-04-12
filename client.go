@@ -39,6 +39,7 @@ type ClientOptions struct {
 	Context           context.Context
 	Dialer            network.Dialer
 	ServerAddress     metadata.Socksaddr
+	QUICOptions       qtls.QUICOptions
 	TLSConfig         tls.Config
 	UUID              [16]byte
 	Password          string
@@ -67,6 +68,7 @@ func NewClient(options ClientOptions) (*Client, error) {
 		DisablePathMTUDiscovery: !(runtime.GOOS == "windows" || runtime.GOOS == "linux" || runtime.GOOS == "android" || runtime.GOOS == "darwin"),
 		MaxIncomingUniStreams:   1 << 60,
 	}
+	qtls.ApplyQUICOptions(quicConfig, options.QUICOptions)
 	switch options.CongestionControl {
 	case "":
 		options.CongestionControl = "bbr"
