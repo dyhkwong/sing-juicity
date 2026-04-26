@@ -20,6 +20,7 @@ package juicity
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"errors"
 	"io"
 	"net"
@@ -27,7 +28,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gofrs/uuid/v5"
 	"github.com/sagernet/quic-go"
 	"github.com/sagernet/sing-quic"
 	"github.com/sagernet/sing/common"
@@ -230,7 +230,7 @@ func (s *serverSession[U]) handleUniStream(stream *quic.ReceiveStream) error {
 		copy(userUUID[:], buffer.Range(2, 2+16))
 		user, loaded := s.userMap[userUUID]
 		if !loaded {
-			return exceptions.New("authentication: unknown user ", uuid.UUID(userUUID))
+			return exceptions.New("authentication: unknown user ", uuidToString(userUUID))
 		}
 		handshakeState := s.quicConn.ConnectionState()
 		token, err := handshakeState.TLS.ExportKeyingMaterial(string(userUUID[:]), []byte(s.passwordMap[user]), 32)
@@ -356,4 +356,18 @@ func (c *serverConn) RemoteAddr() net.Addr {
 func (c *serverConn) Close() error {
 	c.Stream.CancelRead(0)
 	return c.Stream.Close()
+}
+
+func uuidToString(uuid [16]byte) string {
+	var buf [36]byte
+	hex.Encode(buf[:8], uuid[:4])
+	buf[8] = '-'
+	hex.Encode(buf[9:13], uuid[4:6])
+	buf[13] = '-'
+	hex.Encode(buf[14:18], uuid[6:8])
+	buf[18] = '-'
+	hex.Encode(buf[19:23], uuid[8:10])
+	buf[23] = '-'
+	hex.Encode(buf[24:], uuid[10:])
+	return string(buf[:])
 }
